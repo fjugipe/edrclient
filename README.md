@@ -6,6 +6,10 @@ service follows the standards.
 
 **Use it online:** https://ogcapi-browser.meteo.fi (also at https://mrauhala.github.io/ogcapi-browser/)
 
+![The browser with MeteoCore's ECMWF IFS forecast: the query on the left, the temperature at 850 hPa over the Nordic countries on the map, and the same grid in the Data tab](docs/images/grid.webp)
+
+*An area query on MeteoCore: the temperature at 850 hPa, drawn on the map and in the Data tab. [Open it in the app](https://ogcapi-browser.meteo.fi/#request=https%3A%2F%2Fmeteocore.app.meteo.fi%2Fedr%2Fcollections%2Fecmwf-ifs-pressure%2Farea%3Fcoords%3DPOLYGON%28%285%2054%2C32%2054%2C32%2071%2C5%2071%2C5%2054%29%29%26z%3D850%26parameter-name%3Dt).*
+
 ## Features
 
 - **Services:** 20 presets (EDR services such as FMI, DMI, DWD, Met Office, MeteoCore, Meteogate
@@ -25,10 +29,49 @@ service follows the standards.
   collection's metadata and the server's OpenAPI definition. The service itself is validated
   against the OGC schemas (Common, Features, EDR 1.0–1.2, Records, Maps), and its OpenAPI document
   for structure and EDR consistency.
-- **Responses:** read through Data, Raw, Headers, Sizes and Checks tabs: a JSON viewer that jumps
-  to validation errors, CoverageJSON as a chart per parameter, a table or figures, IWXXM rendered
-  for reading, images, and feature tables. Features items can be filtered by their
-  queryables.
+- **Responses:** read through Data, Raw, Headers, Sizes and Checks tabs, with a JSON viewer that
+  steps through what Checks flags.
+  - **CoverageJSON** as what it holds:
+    - an area or cube as a picture of its cells, with a legend, a readout that pins a cell and
+      opens its value in Raw, and a step bar for times and levels, also on the map;
+    - levels at a point as profiles, a panel per parameter;
+    - a time series as a chart per parameter;
+    - a path (Trajectory or Section) as positions along it, with their distance.
+
+    Figures sum up each parameter, a Table lists the values where there are several, and a
+    response the app can't read says why rather than breaking.
+
+    ![Levels at a point as profiles: FMI's humidity and temperature from 1000 to 50 hPa over Helsinki, a panel each, on a log pressure axis](docs/images/profile.webp)
+
+    *Levels at a point on FMI Open Data, a profile per parameter. [Open it in the app](https://ogcapi-browser.meteo.fi/#request=https%3A%2F%2Fopendata.fmi.fi%2Fedr%2Fcollections%2Fecmwf_painepinta%2Fposition%3Fcoords%3DPOINT%2824.94%2060.17%29%26parameter-name%3Dtemperature%2Chumidity).*
+
+    ![A time series as a chart per parameter: MeteoCore's relative humidity, temperature and wind speed at 850 hPa over Helsinki, 85 times](docs/images/series.webp)
+
+    *A point over time on MeteoCore, a chart per parameter with its figures. [Open it in the app](https://ogcapi-browser.meteo.fi/#request=https%3A%2F%2Fmeteocore.app.meteo.fi%2Fedr%2Fcollections%2Fecmwf-ifs-pressure%2Fposition%3Fcoords%3DPOINT%2824.94%2060.17%29%26z%3D850%26parameter-name%3Dt%2Cr%2Cws).*
+  - **IWXXM** rendered for reading, **images**, and **feature tables**. Features items can be
+    filtered by their queryables.
+- **Checks:** what's wrong with a response and what's right. Each finding is an error, an issue, a
+  note or a pass, at its line in Raw. Many link to the section of the standard they rest on.
+  - **The format:** the CoverageJSON 1.0 schema, each coverage as the domainType it inherits, or
+    EDR's locations schema, and the media type.
+  - **The data,** against CoverageJSON 1.0's rules:
+    - values that fit their axes, and axes in order;
+    - x, y and z referenced, with z's direction and unit;
+    - a Trajectory's times in order, and every time in the right form;
+    - units, labels and language tags.
+
+    It also notes what's worth a look: likely fill values, uneven steps, a path ending short of
+    its line, nulls.
+  - **Against the request and the collection:** the datetime and levels asked for, and the
+    collection's extent.
+  - **Where two standards differ,** as EDR 1.2 and CoverageJSON do on UCUM's URI and the media
+    type, it says so and cites both.
+
+  ![The Checks tab for FMI's profile: the schema and media type passed under the format; issues, notes and passes under the data, each with its line in Raw; and what was checked against the collection](docs/images/checks.webp)
+
+  *Checks for the same FMI profile: two issues with z, notes, and what passed, against the response and its collection. [Open it in the app](https://ogcapi-browser.meteo.fi/#request=https%3A%2F%2Fopendata.fmi.fi%2Fedr%2Fcollections%2Fecmwf_painepinta%2Fposition%3Fcoords%3DPOINT%2824.94%2060.17%29%26parameter-name%3Dtemperature%2Chumidity), then Checks.*
+- **The API as loaded:** its landing page, conformance, OpenAPI document and collections, each with
+  the response it came from.
 - **Search:** a command palette (`/`) across collections and items.
 
 ## Running it
@@ -110,6 +153,18 @@ The key ends up in the browser, so it is public: restrict it to your sites in Ca
 
 Single-letter shortcuts don't fire while a text field has focus.
 
+Inside the Response pane:
+
+| Where | Key | Action |
+|---|---|---|
+| Raw | `Cmd+↑` / `Cmd+↓` (`Ctrl` elsewhere) | Previous / next flagged line |
+| A picture of cells (click it first) | Arrow keys | Move the pinned cell |
+| | `+` / `-`, `0` | Zoom in or out, fit it again |
+| | `Esc` | Unpin |
+| A profile | `↑` / `↓`, `←` / `→` | The level, the time |
+| A step bar | `←` / `→`, `Home` / `End` | A step, the first or last |
+| A pane divider | `←` / `→` | Resize the pane |
+
 ## Development
 
 Requires Node.js 24 (see `.node-version`).
@@ -129,6 +184,9 @@ The app is React, TypeScript and Vite, with MUI for the interface and OpenLayers
 | Path | Contents |
 |---|---|
 | `src/query/` | the data query model: building request URLs and validating queries |
+| `src/coverage/` | reading CoverageJSON responses (cells, profiles, paths) and checking them |
+| `src/standards.ts` | the sections of the standards that findings cite |
+| `src/overview/` | the API's resources as loaded |
 | `src/validation/` | service and OpenAPI document validation |
 | `src/api/` | fetching from OGC API services |
 | `src/contexts/` | shared app state |
