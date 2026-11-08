@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ResponseChecks, { ChecksTabLabel } from './ResponseChecks';
 import type { ValidationError } from './types/api';
+import { COVJSON } from './standards';
 
 const render = (props: Partial<ComponentProps<typeof ResponseChecks>>) => renderToStaticMarkup(
   <ResponseChecks schemaName={null} findings={[]} lines={[]} onGoToLine={() => {}} {...props} />,
@@ -84,6 +85,18 @@ describe('ResponseChecks', () => {
       expect(html).toMatch(/<button[^>]*>line 234<\/button>/);
       expect(html).toMatch(/<button[^>]*>line 97<\/button>/);
       expect(html).toContain('aria-label="Note"');
+    });
+
+    it('cites the rule a finding rests on, linked to its section, apart from the words', () => {
+      const html = render({ dataNotes: [{ message: 'Levels aren’t in order: 500, 1000, 850', line: 49, severity: 'error', rule: COVJSON.domain }, { message: 'a note', line: 2 }] });
+      expect(html).toContain('href="https://docs.ogc.org/cs/21-069r2/21-069r2.html#_d5c16418-1a20-4dbf-bf7a-8e685062df97"');
+      expect(html).toContain('>CoverageJSON 9.6.1</a>');
+      expect(html).toContain('target="_blank"');
+      expect(html).toContain('rel="noopener noreferrer"');
+      // A space between them, so that it's read and copied as two
+      expect(html).toMatch(/850 (<style[^>]*>[^<]*<\/style>)*<a /);
+      // Only the finding with a rule has a link
+      expect(html.split('href="https://docs.ogc.org/').length - 1).toBe(1);
     });
 
     it('stands alone with no schema', () => {
